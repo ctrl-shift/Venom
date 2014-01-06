@@ -26,9 +26,15 @@ namespace Venom {
 
     private Sqlite.Database db;
 
-    private Sqlite.Statement prepared_insert_statement;
+    private Sqlite.Statement insert_message_statement;
 
-    private Sqlite.Statement prepared_select_statement;
+    private Sqlite.Statement select_message_statement;
+
+    private Sqlite.Statement insert_alias_statement;
+
+    private Sqlite.Statement select_alias_statement;
+
+    private Sqlite.Statement update_alias_statement;
 
     public LocalStorage(ToxSession session, bool log) {
       this.session = session;
@@ -51,33 +57,33 @@ namespace Venom {
         return;
       }
 
-      int param_position = prepared_insert_statement.bind_parameter_index ("$USER");
+      int param_position = insert_message_statement.bind_parameter_index ("$USER");
       assert (param_position > 0);
       string myId = Tools.bin_to_hexstring(session.get_address());
-      prepared_insert_statement.bind_text(param_position, myId);
+      insert_message_statement.bind_text(param_position, myId);
 
-      param_position = prepared_insert_statement.bind_parameter_index ("$CONTACT");
+      param_position = insert_message_statement.bind_parameter_index ("$CONTACT");
       assert (param_position > 0);
       string cId = Tools.bin_to_hexstring(c.public_key);
-      prepared_insert_statement.bind_text(param_position, cId);
+      insert_message_statement.bind_text(param_position, cId);
 
-      param_position = prepared_insert_statement.bind_parameter_index ("$MESSAGE");
+      param_position = insert_message_statement.bind_parameter_index ("$MESSAGE");
       assert (param_position > 0);
-      prepared_insert_statement.bind_text(param_position, message);
+      insert_message_statement.bind_text(param_position, message);
 
-      param_position = prepared_insert_statement.bind_parameter_index ("$TIME");
+      param_position = insert_message_statement.bind_parameter_index ("$TIME");
       assert (param_position > 0);
       DateTime nowTime = new DateTime.now_utc();
-      prepared_insert_statement.bind_int64(param_position, nowTime.to_unix());
+      insert_message_statement.bind_int64(param_position, nowTime.to_unix());
 
-      param_position = prepared_insert_statement.bind_parameter_index ("$SENDER");
+      param_position = insert_message_statement.bind_parameter_index ("$SENDER");
       assert (param_position > 0);
-      prepared_insert_statement.bind_int(param_position, issender?1:0);
+      insert_message_statement.bind_int(param_position, issender?1:0);
 
-      prepared_insert_statement.step ();
+      insert_message_statement.step ();
       
 
-      prepared_insert_statement.reset ();
+      insert_message_statement.reset ();
     }
 
     public GLib.List<Message>? retrieve_history(Contact c) {
@@ -85,28 +91,28 @@ namespace Venom {
       if (!logging_enabled) {
         return null;
       }
-      int param_position = prepared_select_statement.bind_parameter_index ("$USER");
+      int param_position = select_message_statement.bind_parameter_index ("$USER");
       assert (param_position > 0);
       string myId = Tools.bin_to_hexstring(session.get_address());
-      prepared_select_statement.bind_text(param_position, myId);
+      select_message_statement.bind_text(param_position, myId);
 
-      param_position = prepared_select_statement.bind_parameter_index ("$CONTACT");
+      param_position = select_message_statement.bind_parameter_index ("$CONTACT");
       assert (param_position > 0);
       string cId = Tools.bin_to_hexstring(c.public_key);
-      prepared_select_statement.bind_text(param_position, cId);
+      select_message_statement.bind_text(param_position, cId);
 
-      param_position = prepared_select_statement.bind_parameter_index ("$OLDEST");
+      param_position = select_message_statement.bind_parameter_index ("$OLDEST");
       assert (param_position > 0);
       DateTime earliestTime = new DateTime.now_utc();
       earliestTime = earliestTime.add_days (-VenomSettings.instance.days_to_log);
-      prepared_select_statement.bind_int64(param_position, earliestTime.to_unix());
+      select_message_statement.bind_int64(param_position, earliestTime.to_unix());
 
       List<Message> messages = new List<Message>();
 
-      while (prepared_select_statement.step () == Sqlite.ROW) {
-        string message = prepared_select_statement.column_text(3);
-        int64 timestamp = prepared_select_statement.column_int64(4);
-        bool issender = prepared_select_statement.column_int(5) != 0;
+      while (select_message_statement.step () == Sqlite.ROW) {
+        string message = select_message_statement.column_text(3);
+        int64 timestamp = select_message_statement.column_int64(4);
+        bool issender = select_message_statement.column_int(5) != 0;
         DateTime send_time = new DateTime.from_unix_utc (timestamp);
 
         Message mess = new Message.with_time(issender?null:c, message, send_time);
@@ -114,13 +120,11 @@ namespace Venom {
 
       }
 
-      prepared_select_statement.reset ();
+      select_message_statement.reset ();
       return messages;
     }
 
     public int init_db() {
-
-      string errmsg;
 
       // Open/Create a database:
       string filepath = ResourceFactory.instance.db_filename;
@@ -130,56 +134,130 @@ namespace Venom {
         return -1;
       }
 
+      int ret_value = 0;
+
       if (logging_enabled) {
+        ret_value = setup_logging();
+        if (ret_value != 0)
+          return ret_value;
+      }
 
-        //create table and index if needed
-        const string query = """
-        CREATE TABLE IF NOT EXISTS History (
-          id  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
-          userHash  TEXT  NOT NULL,
-          contactHash TEXT  NOT NULL,
-          message TEXT  NOT NULL,
-          timestamp INTEGER NOT NULL,
-          issent INTEGER NOT NULL
-        );
-        """;
+      ret_value = setup_aliases();
+      if (ret_value != 0)
+        return ret_value;
 
-        ec = db.exec (query, null, out errmsg);
-        if (ec != Sqlite.OK) {
-          stderr.printf ("Error: %s\n", errmsg);
-          return -1;
-        }
+      stdout.printf ("Created db.\n");
 
-        const string index_query = """
-          CREATE UNIQUE INDEX IF NOT EXISTS main_index ON History (userHash, contactHash, timestamp);
-        """;
+      return 0;
+    }
 
-        ec = db.exec (index_query, null, out errmsg);
-        if (ec != Sqlite.OK) {
-          stderr.printf ("Error: %s\n", errmsg);
-          return -1;
-        }
+    private int setup_logging() {
 
-        //prepare insert statement for adding new history messages
-        const string prepared_insert_str = "INSERT INTO History (userHash, contactHash, message, timestamp, issent) VALUES ($USER, $CONTACT, $MESSAGE, $TIME, $SENDER);";
-        ec = db.prepare_v2 (prepared_insert_str, prepared_insert_str.length, out prepared_insert_statement);
-        if (ec != Sqlite.OK) {
-          stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
-          return -1;
-        }
+      string errmsg;
+      int ec;
 
-        //prepare select statement to get history. Will execute on indexed data
-        const string prepared_select_str = "SELECT * FROM History WHERE userHash = $USER AND contactHash = $CONTACT AND timestamp > $OLDEST;";
-        ec = db.prepare_v2 (prepared_select_str, prepared_select_str.length, out prepared_select_statement);
-        if (ec != Sqlite.OK) {
-          stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
-          return -1;
-        }
 
-        stdout.printf ("Created db.\n");
+      //create table and index if needed
+      const string query = """
+      CREATE TABLE IF NOT EXISTS History (
+        id  INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+        userHash  TEXT  NOT NULL,
+        contactHash TEXT  NOT NULL,
+        message TEXT  NOT NULL,
+        timestamp INTEGER NOT NULL,
+        issent INTEGER NOT NULL
+      );
+      """;
+
+      ec = db.exec (query, null, out errmsg);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %s\n", errmsg);
+        return -1;
+      }
+
+      const string index_query = """
+        CREATE UNIQUE INDEX IF NOT EXISTS main_index ON History (userHash, contactHash, timestamp);
+      """;
+
+      ec = db.exec (index_query, null, out errmsg);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %s\n", errmsg);
+        return -1;
+      }
+
+      //prepare insert statement for adding new history messages
+      const string prepared_insert_str = "INSERT INTO History (userHash, contactHash, message, timestamp, issent) VALUES ($USER, $CONTACT, $MESSAGE, $TIME, $SENDER);";
+      ec = db.prepare_v2 (prepared_insert_str, prepared_insert_str.length, out insert_message_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
+      }
+
+      //prepare select statement to get history. Will execute on indexed data
+      const string prepared_select_str = "SELECT * FROM History WHERE userHash = $USER AND contactHash = $CONTACT AND timestamp > $OLDEST;";
+      ec = db.prepare_v2 (prepared_select_str, prepared_select_str.length, out select_message_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
       }
 
       return 0;
+    }
+
+    private int setup_aliases() {
+
+      string errmsg;
+      int ec;
+
+      const string query = """
+      CREATE TABLE IF NOT EXISTS Aliases (
+        userHash  TEXT  NOT NULL,
+        contactHash TEXT  NOT NULL,
+        alias TEXT  NOT NULL,
+        PRIMARY KEY (userHash, contactHash)
+      );
+      """;
+
+      ec = db.exec (query, null, out errmsg);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %s\n", errmsg);
+        return -1;
+      }
+
+      const string index_query = """
+        CREATE UNIQUE INDEX IF NOT EXISTS main_index ON Aliases (userHash, contactHash);
+      """;
+
+      ec = db.exec (index_query, null, out errmsg);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %s\n", errmsg);
+        return -1;
+      }
+
+      const string prepared_insert_str = "INSERT INTO Aliases (userHash, contactHash, alias) VALUES ($USER, $CONTACT, $ALIAS);";
+      ec = db.prepare_v2 (prepared_insert_str, prepared_insert_str.length, out insert_alias_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
+      }
+
+      const string prepared_update_str = "UPDATE Aliases SET alias='$ALIAS' WHERE userHash = $USER AND contactHash = $CONTACT;";
+      ec = db.prepare_v2 (prepared_update_str, prepared_update_str.length, out update_alias_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
+      }
+
+      //prepare select statement to get history. Will execute on indexed data
+      const string prepared_select_str = "SELECT alias FROM Aliases WHERE userHash = $USER AND contactHash = $CONTACT;";
+      ec = db.prepare_v2 (prepared_select_str, prepared_select_str.length, out select_alias_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
+      }
+
+      return 0;
+
     }
 
 
