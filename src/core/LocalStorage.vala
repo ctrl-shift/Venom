@@ -299,6 +299,61 @@ namespace Venom {
       return 0;
     }
 
+    private int setup_aliases() {
+
+      string errmsg;
+      int ec;
+
+      const string query = """
+      CREATE TABLE IF NOT EXISTS Aliases (
+        userHash TEXT NOT NULL,
+        contactHash TEXT NOT NULL,
+        alias TEXT NOT NULL,
+        PRIMARY KEY (userHash, contactHash)
+      );
+      """;
+
+      ec = db.exec (query, null, out errmsg);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %s\n", errmsg);
+        return -1;
+      }
+
+      const string index_query = """
+        CREATE UNIQUE INDEX IF NOT EXISTS main_index ON Aliases (userHash, contactHash);
+      """;
+
+      ec = db.exec (index_query, null, out errmsg);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %s\n", errmsg);
+        return -1;
+      }
+
+      const string prepared_insert_str = "INSERT INTO Aliases (userHash, contactHash, alias) VALUES ($USER, $CONTACT, $ALIAS);";
+      ec = db.prepare_v2 (prepared_insert_str, prepared_insert_str.length, out insert_alias_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
+      }
+
+      //Update statement to edit alias. Will execute on indexed data
+      const string prepared_update_str = "UPDATE Aliases SET alias='$ALIAS' WHERE userHash = $USER AND contactHash = $CONTACT;";
+      ec = db.prepare_v2 (prepared_update_str, prepared_update_str.length, out update_alias_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
+      }
+
+      //prepare select statement to get aliases. Will execute on indexed data
+      const string prepared_select_str = "SELECT alias FROM Aliases WHERE userHash = $USER AND contactHash = $CONTACT;";
+      ec = db.prepare_v2 (prepared_select_str, prepared_select_str.length, out select_alias_statement);
+      if (ec != Sqlite.OK) {
+        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
+        return -1;
+      }
+
+      return 0;
+    }
 
   }
 }
