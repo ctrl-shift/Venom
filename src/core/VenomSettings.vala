@@ -1,5 +1,7 @@
 /*
- *    Copyright (C) 2013 Venom authors and contributors
+ *    VenomSettings.vala
+ *
+ *    Copyright (C) 2013-2014  Venom authors and contributors
  *
  *    This file is part of Venom.
  *
@@ -21,7 +23,9 @@ namespace Venom {
   public class VenomSettings : Object {
 
     public bool enable_logging{get;set;}
+    public bool enable_urgency_notification{get;set;}
     public int days_to_log{get;set;}
+    public bool dec_binary_prefix{get;set;}
 
     private static VenomSettings? _instance;
     public static VenomSettings instance {
@@ -58,13 +62,17 @@ namespace Venom {
     }
 
     private VenomSettings() {
+      enable_urgency_notification = true;
       enable_logging = false;
       this.days_to_log = 180;
+      dec_binary_prefix = true;
     }
 
     private VenomSettings.with_settings(VenomSettings other) {
+      this.enable_urgency_notification = other.enable_urgency_notification;
       this.enable_logging = other.enable_logging;
       this.days_to_log = other.days_to_log;
+      this.dec_binary_prefix = other.dec_binary_prefix;
     }
 
     public VenomSettings.with_settings_file(string path_to_file) {

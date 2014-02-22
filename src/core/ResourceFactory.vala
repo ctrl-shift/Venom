@@ -1,5 +1,7 @@
 /*
- *    Copyright (C) 2013 Venom authors and contributors
+ *    ResourceFactory.vala
+ *
+ *    Copyright (C) 2013-2014  Venom authors and contributors
  *
  *    This file is part of Venom.
  *
@@ -60,13 +62,13 @@ namespace Venom {
       default_theme_filename = Path.build_filename(theme_folder, "default.css");
 
 
-      tox_config_dir = Path.build_filename(GLib.Environment.get_user_config_dir(), "tox"); 
+      tox_config_dir = Path.build_filename(GLib.Environment.get_user_config_dir(), "tox");
       data_filename = Path.build_filename(tox_config_dir, "data");
       db_filename = Path.build_filename(tox_config_dir, "tox.db");
       config_filename = Path.build_filename(tox_config_dir, "config.json");
 
-      settings_providers = new Gee.ArrayList<SettingsProvider>();
       default_add_contact_message = "Please let me add you to my contactlist.";
+      default_username = "Tox User";
     }
 
 
@@ -98,8 +100,10 @@ namespace Venom {
     public string db_filename {get; set;}
     public string config_filename {get; set;}
     public string default_add_contact_message {get; private set;}
+    public string default_username {get; private set;}
 
-    public Gee.ArrayList<SettingsProvider> settings_providers {get; set;}
+    public bool offline_mode {get; set; default = false;}
+    public bool textview_mode {get; set; default = false;}
 
     private Gdk.Pixbuf? load_image_from_resource(string resourcename) {
       Gdk.Pixbuf buf = null;

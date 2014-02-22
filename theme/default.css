@@ -24,6 +24,7 @@
 @define-color border-color #636466;
 @define-color callbutton-color #6bc260;
 @define-color callbutton-selected lighter(@callbutton-color);
+@define-color separator-color #c1c1c1;
 
 * {
   engine: none;
@@ -37,13 +38,13 @@
 .contact_list * {
   border-width: 0px;
   border-radius: 0px;
+  background-color: alpha(white, 0);
 }
 
 .contact_list,
 .contact_list *,
 .conversation_widget,
 .conversation_widget * {
-  background-color: alpha(white, 0);
   /*border-width: 0px;*/
   background-clip: padding-box;
   /*font-family: Roboto, Sans;
@@ -90,8 +91,6 @@
   -GtkToolButton-icon-spacing: 6;
   -GtkToolItemGroup-expander-size: 11;
   -GtkToolbar-internal-padding: 0;
-  -GtkTreeView-expander-size: 11;
-  -GtkTreeView-vertical-separator: 0;
   -GtkWidget-wide-separators: true;
   -GtkWidget-separator-width: 1;
   -GtkWidget-separator-height: 1;
@@ -156,21 +155,18 @@
 
 .contact_list .statuscombo * {
   font-weight: bold;
+  text-shadow: none;
   background-color: @border-color;
   background-image: none;
   border-image: none;
   border-style: none;
-  border-radius: 4px;
-}
-
-.contact_list .statuscombo *{
-  text-shadow: none;
+  border-radius: 0px;
 }
 
 .contact_list .userbutton:active,
-.contact_list .userbutton:hover:active,
+.contact_list .userbutton:hover,
 .contact_list .userbutton:focus:active{
-  background-color: lighter (@treeview-background);
+  background-color: @treeview-selected;
   background-image: none;
   border-style: none;
 }
@@ -224,6 +220,7 @@
   border: none;
 }
 
+.contact_list .slider:hover,
 .contact_list .slider:active {
   background-color: @treeview-selected;
 }
@@ -232,13 +229,28 @@
   background-color: @treeview-background;
   background-image: none;
   border: 1px solid @background;
-  border-radius: 4px;
+  border-radius: 0px;
 }
 
 .conversation_widget,
 .conversation_widget GtkTreeView {
   color: black;
   background-color: @foreground;
+}
+
+.conversation_widget GtkSeparator {
+  border-width: 1px;
+  border-color: @separator-color;
+  border-style: dotted;
+}
+
+.conversation_widget .entry {
+  border-radius: 0px;
+  border-width: 1px 1px 1px 1px;
+  border-image: none;
+  border-style: solid;
+  border-color: @separator-color;
+  box-shadow: none;
 }
 
 .conversation_widget .callbutton:active,
@@ -259,7 +271,65 @@
   background-color: @callbutton-color;
   background-image: none;
   border-image: none;
-  border-radius: 4px;
+  border-radius: 0px;
   border: none;
+}
+
+/* chat list */
+@define-color cl-foreground #231f20;
+@define-color cl-background #f1f2f2;
+
+
+.chat_list .filetransfer_entry .frame {
+  background: #5b5a5c;
+  border-radius: 5px;
+}
+
+.chat_list .filetransfer_entry .frame GtkLabel{
+  color: #d5d5d5;
+}
+
+.conversation_widget .scrollbar {
+  background-color: @cl-background;
+}
+
+.conversation_widget .scrollbar.slider {
+  background-color: #bbb;
+}
+
+.conversation_widget .scrollbar.slider:prelight {
+  background-color: #939598;
+}
+
+.chat_list .message_frame {
+  border-width: 0px;
+}
+
+.message_entry .own_name {
+  color: #939598;
+}
+
+/*.filetransfer_entry *{
+  -GtkButton-default-border: 0;
+}*/
+
+.filetransfer_entry GtkLabel.error {
+  color: #ff0000;
+  background: #5b5a5c;
+}
+
+.filetransfer_entry GtkProgressBar.trough {
+  background: #222;
+  border-color: #111;
+}
+
+/*.filetransfer_entry GtkButton {
+  background-image: none;
+  background: #5b5a5c;
+  border-color: #222;
+}*/
+
+.filetransfer_entry GtkButton GtkLabel {
+  color: #222;
 }
 

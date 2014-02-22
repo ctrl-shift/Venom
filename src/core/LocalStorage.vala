@@ -18,10 +18,23 @@
  */
 
 namespace Venom {
-  public class LocalStorage : Object {
+  public interface ILocalStorage : GLib.Object {
+    public abstract void on_message(Contact c, string message, bool issender);
+    public abstract GLib.List<Message>? retrieve_history(Contact c);
+    public abstract void delete_history(Contact c);
+    public abstract void connect_to(ToxSession session);
+    public abstract void disconnect_from(ToxSession session);
+  }
 
-    private bool logging_enabled;
+  public class DummyStorage : ILocalStorage, GLib.Object {
+    public void on_message(Contact c, string message, bool issender) {}
+    public GLib.List<Message>? retrieve_history(Contact c) { return null; }
+    public void delete_history(Contact c) {}
+    public void connect_to(ToxSession session) {}
+    public void disconnect_from(ToxSession session) {}
+  }
 
+  public class LocalStorage : ILocalStorage, GLib.Object {
     private unowned ToxSession session;
 
     private Sqlite.Database db;
@@ -36,12 +49,19 @@ namespace Venom {
 
     private Sqlite.Statement update_alias_statement;
 
-    public LocalStorage(ToxSession session, bool log) {
-      this.session = session;
-      this.logging_enabled = log;
+    public LocalStorage() {
       init_db ();
+    }
+
+    public void connect_to(ToxSession session) {
+      this.session = session;
       session.on_own_message.connect(on_outgoing_message);
       session.on_friend_message.connect(on_incoming_message);
+    }
+
+    public void disconnect_from(ToxSession session) {
+      session.on_own_message.disconnect(on_outgoing_message);
+      session.on_friend_message.disconnect(on_incoming_message);
     }
 
     private void on_incoming_message(Contact c, string message) {
@@ -53,9 +73,6 @@ namespace Venom {
     }
 
     public void on_message(Contact c, string message, bool issender) {
-      if (!logging_enabled) {
-        return;
-      }
 
       int param_position = insert_message_statement.bind_parameter_index ("$USER");
       assert (param_position > 0);
@@ -87,10 +104,6 @@ namespace Venom {
     }
 
     public GLib.List<Message>? retrieve_history(Contact c) {
-
-      if (!logging_enabled) {
-        return null;
-      }
       int param_position = select_message_statement.bind_parameter_index ("$USER");
       assert (param_position > 0);
       string myId = Tools.bin_to_hexstring(session.get_address());
@@ -114,14 +127,21 @@ namespace Venom {
         int64 timestamp = select_message_statement.column_int64(4);
         bool issender = select_message_statement.column_int(5) != 0;
         DateTime send_time = new DateTime.from_unix_utc (timestamp);
-
-        Message mess = new Message.with_time(issender?null:c, message, send_time);
+        Message mess;
+        if(issender) {
+          mess = new Message.outgoing(c, message, send_time);
+        } else {
+          mess = new Message.incoming(c, message, send_time);
+        }
         messages.append(mess);
-
       }
 
       select_message_statement.reset ();
       return messages;
+    }
+
+    public void delete_history(Contact c) {
+      //TODO
     }
 
     public string get_alias(Contact c) {
@@ -212,11 +232,10 @@ namespace Venom {
 
       int ret_value = 0;
 
-      if (logging_enabled) {
-        ret_value = setup_logging();
-        if (ret_value != 0)
-          return ret_value;
-      }
+      
+      ret_value = setup_logging();
+      if (ret_value != 0)
+        return ret_value;
 
       ret_value = setup_aliases();
       if (ret_value != 0)
@@ -278,63 +297,6 @@ namespace Venom {
       }
 
       return 0;
-    }
-
-    private int setup_aliases() {
-
-      string errmsg;
-      int ec;
-
-      const string query = """
-      CREATE TABLE IF NOT EXISTS Aliases (
-        userHash  TEXT  NOT NULL,
-        contactHash TEXT  NOT NULL,
-        alias TEXT  NOT NULL,
-        PRIMARY KEY (userHash, contactHash)
-      );
-      """;
-
-      ec = db.exec (query, null, out errmsg);
-      if (ec != Sqlite.OK) {
-        stderr.printf ("Error: %s\n", errmsg);
-        return -1;
-      }
-
-      const string index_query = """
-        CREATE UNIQUE INDEX IF NOT EXISTS main_index ON Aliases (userHash, contactHash);
-      """;
-
-      ec = db.exec (index_query, null, out errmsg);
-      if (ec != Sqlite.OK) {
-        stderr.printf ("Error: %s\n", errmsg);
-        return -1;
-      }
-
-      const string prepared_insert_str = "INSERT INTO Aliases (userHash, contactHash, alias) VALUES ($USER, $CONTACT, $ALIAS);";
-      ec = db.prepare_v2 (prepared_insert_str, prepared_insert_str.length, out insert_alias_statement);
-      if (ec != Sqlite.OK) {
-        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
-        return -1;
-      }
-
-      //Update statement to edit alias. Will execute on indexed data
-      const string prepared_update_str = "UPDATE Aliases SET alias='$ALIAS' WHERE userHash = $USER AND contactHash = $CONTACT;";
-      ec = db.prepare_v2 (prepared_update_str, prepared_update_str.length, out update_alias_statement);
-      if (ec != Sqlite.OK) {
-        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
-        return -1;
-      }
-
-      //prepare select statement to get aliases. Will execute on indexed data
-      const string prepared_select_str = "SELECT alias FROM Aliases WHERE userHash = $USER AND contactHash = $CONTACT;";
-      ec = db.prepare_v2 (prepared_select_str, prepared_select_str.length, out select_alias_statement);
-      if (ec != Sqlite.OK) {
-        stderr.printf ("Error: %d: %s\n", db.errcode (), db.errmsg ());
-        return -1;
-      }
-
-      return 0;
-
     }
 
 

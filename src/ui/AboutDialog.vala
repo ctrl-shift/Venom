@@ -1,5 +1,7 @@
 /*
- *    Copyright (C) 2013 Venom authors and contributors
+ *    AboutDialog.vala
+ *
+ *    Copyright (C) 2013-2014  Venom authors and contributors
  *
  *    This file is part of Venom.
  *
@@ -16,36 +18,33 @@
  *    You should have received a copy of the GNU General Public License
  *    along with Venom.  If not, see <http://www.gnu.org/licenses/>.
  */
+
 namespace Venom {
   public class AboutDialog : Gtk.AboutDialog {
     public AboutDialog() {
-      init_widgets();
-    }
-
-    private void init_widgets() {
-      this.authors = {"naxuroqa", null};
-
-      this.program_name = "Venom";
-      this.comments = "GTK+/Vala GUI for Tox";
-      this.copyright = "(C) 2013 Venom authors and contributors";
-      this.version = Config.VENOM_VERSION;
-
-      this.website = "https://github.com/naxuroqa/Venom";
-
-      this.license =
-"""    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.""";
-      this.resizable = true;
+      authors = {
+        "naxuroqa <naxuroqa@gmail.com>",
+        "Denys Han <h.denys@gmail.com>",
+        "Andrii Titov <concuror@gmail.com>",
+        "Maxim Golubev <3demax@gmail.com>",
+        "Fukukami",
+        null
+      };
+      artists = {
+        "ItsDuke",
+        null
+      };
+      string [] packagers = {
+        "stqism <sean@tox.im>",
+        null
+      };
+      this.add_credit_section("Packagers", (string) packagers);
+      comments = Config.SHORT_DESCRIPTION;
+      copyright = Config.COPYRIGHT_NOTICE;
+      program_name = "Venom";
+      version = Config.VERSION;
+      website = Config.WEBSITE;
+      license_type = Gtk.License.GPL_3_0;
     }
   }
 }

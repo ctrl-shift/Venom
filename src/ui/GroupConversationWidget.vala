@@ -1,5 +1,5 @@
 /*
- *    ConversationWidget.vala
+ *    GroupConversationWidget.vala
  *
  *    Copyright (C) 2013-2014  Venom authors and contributors
  *
@@ -20,45 +20,37 @@
  */
 
 namespace Venom {
-  public class ConversationWidget : Gtk.EventBox {
+  public class GroupConversationWidget : Gtk.EventBox {
     private static string empty_message = "Type your message here...";
     private bool textview_message_empty = true;
-    private Gtk.Label label_contact_name;
-    private Gtk.Label label_contact_statusmessage;
-    private Gtk.Image image_contact_image;
+    private Gtk.Label label_groupchat_name;
+    private Gtk.Label label_groupchat_statusmessage;
+    private Gtk.Image image_groupchat_image;
 
     private Gtk.TextTag empty_message_tag;
 
     private IConversationView conversation_view;
-    public unowned Contact contact {get; private set;}
 
-    public signal void new_outgoing_message(Message message);
-    public signal void new_outgoing_action(ActionMessage action);
-    public signal void new_outgoing_file(FileTransfer ft);
-    public signal void filetransfer_accepted(FileTransfer ft);
-    public signal void filetransfer_rejected(FileTransfer ft);
+    private unowned GroupChat groupchat {get; private set;}
 
+    public signal void new_outgoing_message(GroupMessage message);
+    public signal void new_outgoing_action(GroupActionMessage action);
 
-    public ConversationWidget( Contact contact ) {
-      this.contact = contact;
+    public GroupConversationWidget( GroupChat groupchat ) {
+      this.groupchat = groupchat;
       init_widgets();
-      setup_drag_drop();
       update_contact();
     }
 
     public void update_contact() {
-      // update contact name
-      if(contact.name == null || contact.name == "") {
-        label_contact_name.set_text(Tools.bin_to_hexstring(contact.public_key));
-      } else {
-        label_contact_name.set_text(contact.name);
-      }
+      // update groupchat name
+      label_groupchat_name.set_text("Groupchat #%i".printf(groupchat.group_id));
 
-      // update contact status message
-      label_contact_statusmessage.set_text(contact.status_message);
+      // update groupchat status message
+      label_groupchat_statusmessage.set_text("%i persons connected".printf(groupchat.peer_count));
 
-      // update contact image
-      image_contact_image.set_from_pixbuf(contact.image != null ? contact.image : ResourceFactory.instance.default_contact);
+      // update groupchat image
+      image_groupchat_image.set_from_pixbuf(groupchat.image != null ? groupchat.image : ResourceFactory.instance.default_groupchat);
     }
 
     private void init_widgets() {
@@ -71,9 +63,9 @@ namespace Venom {
       Gtk.Box box = builder.get_object("box") as Gtk.Box;
       this.add(box);
       this.get_style_context().add_class("conversation_widget");
-      label_contact_name = builder.get_object("label_contact_name") as Gtk.Label;
-      label_contact_statusmessage = builder.get_object("label_contact_statusmessage") as Gtk.Label;
-      image_contact_image = builder.get_object("image_contact_image") as Gtk.Image;
+      label_groupchat_name = builder.get_object("label_contact_name") as Gtk.Label;
+      label_groupchat_statusmessage = builder.get_object("label_contact_statusmessage") as Gtk.Label;
+      image_groupchat_image = builder.get_object("image_contact_image") as Gtk.Image;
 
       Gtk.Image image_call = builder.get_object("image_call") as Gtk.Image;
       Gtk.Image image_call_video = builder.get_object("image_call_video") as Gtk.Image;
@@ -82,9 +74,9 @@ namespace Venom {
       //TODO
       //Gtk.Button button_call = builder.get_object("button_call") as Gtk.Button;
       //Gtk.Button button_call_video = builder.get_object("button_call_video") as Gtk.Button;
-      Gtk.Button button_send_file = builder.get_object("button_send_file") as Gtk.Button;
+      //Gtk.Button button_send_file = builder.get_object("button_send_file") as Gtk.Button;
 
-      button_send_file.clicked.connect(button_send_file_clicked);
+      //button_send_file.clicked.connect(button_send_file_clicked);
 
       Gtk.TextView textview_message = builder.get_object("textview_message") as Gtk.TextView;
       empty_message_tag = textview_message.buffer.create_tag(null, "foreground", "grey");
@@ -120,13 +112,12 @@ namespace Venom {
       image_call_video.set_from_pixbuf(ResourceFactory.instance.call_video);
       image_send_file.set_from_pixbuf(ResourceFactory.instance.send_file);
 
-      if( ResourceFactory.instance.textview_mode ) {
+      if(ResourceFactory.instance.textview_mode) {
         conversation_view = new TextConversationView();
       } else {
         conversation_view = new ConversationView();
       }
       conversation_view.get_style_context().add_class("chat_list");
-      conversation_view.short_names = true;
       Gtk.ScrolledWindow scrolled_window = builder.get_object("scrolled_window") as Gtk.ScrolledWindow;
       scrolled_window.add_with_viewport(conversation_view);
 
@@ -139,107 +130,45 @@ namespace Venom {
       delete_event.connect(hide_on_delete);
     }
 
-    private void add_filetransfer(FileTransfer ft) {
-      FileTransferChatEntry entry = new FileTransferChatEntry(ft);
-      entry.filetransfer_accepted.connect((ft) => { filetransfer_accepted(ft); });
-      entry.filetransfer_rejected.connect((ft) => { filetransfer_rejected(ft); });
-      conversation_view.add_filetransfer(entry);
-    }
-
     private void append_tagged_text_to_buffer(Gtk.TextBuffer buffer, string text, Gtk.TextTag tag) {
       Gtk.TextIter text_end;
       buffer.get_end_iter(out text_end);
       buffer.insert_with_tags(text_end, text, text.length, tag);
     }
 
-    //history
 
+    /*
+    //history
     public void load_history(GLib.List<Message> messages) {
       messages.foreach((message) => {
-          conversation_view.add_message(message);
+        conversation_view.add_message(message);
         });
-    }
+    }*/
 
-    //drag-and-drop
-
-    private void setup_drag_drop() {
-      const Gtk.TargetEntry[] targets = {
-        {"text/uri-list",0,0}
-      };
-      Gtk.drag_dest_set(this,Gtk.DestDefaults.ALL, targets, Gdk.DragAction.COPY);
-      this.drag_data_received.connect(this.on_drag_data_received);
-    }
-
-
-    public void on_incoming_message(Message message) {
-      if(message.from != contact)
+    public void on_incoming_message(GroupMessage message) {
+      if(message.from != groupchat)
         return;
-      conversation_view.add_message(message);
-    }
 
-    public void on_incoming_filetransfer(FileTransfer ft) {
-      add_filetransfer(ft);
+      conversation_view.add_message(message);
     }
 
     public void textview_activate(Gtk.TextView source) {
       string s = source.buffer.text;
       if(s == "")
         return;
-
       GLib.MatchInfo info = null;
       if(Tools.action_regex.match(s, 0, out info) && info.fetch_named("action_name") == "me") {
         string action_string = info.fetch_named("action_string");
         if(action_string == null) {
           action_string = "";
         }
-        ActionMessage a = new ActionMessage.outgoing(contact, action_string);
-        conversation_view.add_message(a);
+        GroupActionMessage a = new GroupActionMessage.outgoing(groupchat, action_string);
         new_outgoing_action(a);
       } else {
-        Message m = new Message.outgoing(contact, s);
-        conversation_view.add_message(m);
+        GroupMessage m = new GroupMessage.outgoing(groupchat, s);
         new_outgoing_message(m);
       }
       source.buffer.text = "";
-    }
-
-    //GUI events
-    public void button_send_file_clicked(Gtk.Button source){
-      Gtk.FileChooserDialog file_selection_dialog = new Gtk.FileChooserDialog("Select a file to send",null,
-                                                                              Gtk.FileChooserAction.OPEN,
-                                                                              "Cancel", Gtk.ResponseType.CANCEL,
-                                                                              "Select", Gtk.ResponseType.ACCEPT);
-      int response = file_selection_dialog.run();
-      if(response != Gtk.ResponseType.ACCEPT){
-        file_selection_dialog.destroy();
-        return;
-      }
-      File file = file_selection_dialog.get_file();
-      file_selection_dialog.destroy();
-      prepare_send_file(file);
-    }
-
-    private void on_drag_data_received(Gtk.Widget sender, Gdk.DragContext drag_context, int x, int y, Gtk.SelectionData data, uint info, uint time) {
-      string[] uris = data.get_uris();
-
-      foreach (string uri in uris) {
-        File file = File.new_for_uri(uri);
-        prepare_send_file(file);
-      }
-      Gtk.drag_finish (drag_context, true, false, time);
-    }
-
-    private void prepare_send_file(File file) {
-      uint64 file_size;
-      try {
-        file_size = file.query_info ("*", FileQueryInfoFlags.NONE).get_size ();
-      } catch (Error e) {
-        stderr.printf("Error occured while getting file size: %s",e.message);
-        return;
-      }
-      FileTransfer ft = new FileTransfer(contact, FileTransferDirection.OUTGOING, file_size, file.get_basename(), file.get_path() );
-      new_outgoing_file(ft);
-      add_filetransfer(ft);
     }
   }
 }

@@ -1,5 +1,5 @@
 /*
- *    ContactStore.vala
+ *    ContactFilter.vala
  *
  *    Copyright (C) 2013-2014  Venom authors and contributors
  *
@@ -20,11 +20,24 @@
  */
 
 namespace Venom {
-  public class ContactStore : Gtk.ListStore {
-    private Gee.Collection<Contact> contacts;
-    public ContactStore() {
-      Contacts = new List<Contact>();
+  interface ContactFilter : GLib.Object {
+    public abstract bool filter_func(Gtk.TreeModel model, Gtk.TreeIter iter);
+  }
+  class ContactFilterAll : GLib.Object, ContactFilter {
+    public bool filter_func(Gtk.TreeModel model, Gtk.TreeIter iter) {
+      return true;
     }
-
+  }
+  class ContactFilterOnline : GLib.Object, ContactFilter {
+    public bool filter_func(Gtk.TreeModel model, Gtk.TreeIter iter) {
+      GLib.Value val;
+      model.get_value(iter, 0, out val);
+      if(val.get_object() is Contact) {
+        return (val as Contact).online;
+      } else if (val.get_object() is GroupChat) {
+        return (val as GroupChat).peer_count > 0;
+      }
+      return true;
+    }
   }
 }
