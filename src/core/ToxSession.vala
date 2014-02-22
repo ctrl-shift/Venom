@@ -44,7 +44,7 @@ namespace Venom {
   // Wrapper class for accessing tox functions threadsafe
   public class ToxSession : Object {
     private Tox.Tox handle;
-    private ILocalStorage local_storage;
+    private IHistoryStorage local_storage;
     private DhtServer[] dht_servers = {};
     private GLib.HashTable<int, Contact> _contacts = new GLib.HashTable<int, Contact>(null, null);
     private GLib.HashTable<int, GroupChat> _groups = new GLib.HashTable<int, GroupChat>(null, null);
@@ -91,7 +91,7 @@ namespace Venom {
 
       //start local storage
       if(VenomSettings.instance.enable_logging) {
-        local_storage = new LocalStorage();
+        local_storage = new SQLiteStorage();
         local_storage.connect_to(this);
       } else {
         local_storage = new DummyStorage();

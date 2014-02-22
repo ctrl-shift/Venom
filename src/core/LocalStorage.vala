@@ -18,7 +18,8 @@
  */
 
 namespace Venom {
-  public interface ILocalStorage : GLib.Object {
+
+  public interface IHistoryStorage : GLib.Object {
     public abstract void on_message(Contact c, string message, bool issender);
     public abstract GLib.List<Message>? retrieve_history(Contact c);
     public abstract void delete_history(Contact c);
@@ -26,7 +27,12 @@ namespace Venom {
     public abstract void disconnect_from(ToxSession session);
   }
 
-  public class DummyStorage : ILocalStorage, GLib.Object {
+  public interface IAliasStorage : GLib.Object {
+    public abstract string get_alias(Contact c);
+    public abstract int set_alias(Contact c, string newAlias);
+  }
+
+  public class DummyStorage : IHistoryStorage, GLib.Object {
     public void on_message(Contact c, string message, bool issender) {}
     public GLib.List<Message>? retrieve_history(Contact c) { return null; }
     public void delete_history(Contact c) {}
@@ -34,7 +40,7 @@ namespace Venom {
     public void disconnect_from(ToxSession session) {}
   }
 
-  public class LocalStorage : ILocalStorage, GLib.Object {
+  public class SQLiteStorage : IHistoryStorage, IAliasStorage, GLib.Object {
     private unowned ToxSession session;
 
     private Sqlite.Database db;
@@ -49,12 +55,13 @@ namespace Venom {
 
     private Sqlite.Statement update_alias_statement;
 
-    public LocalStorage() {
-      init_db ();
+    public SQLiteStorage() {
+      init_db(false);
     }
 
     public void connect_to(ToxSession session) {
       this.session = session;
+      init_db(true);
       session.on_own_message.connect(on_outgoing_message);
       session.on_friend_message.connect(on_incoming_message);
     }
@@ -220,7 +227,7 @@ namespace Venom {
       return 0;
     }
 
-    public int init_db() {
+    private int init_db(bool with_logging) {
 
       // Open/Create a database:
       string filepath = ResourceFactory.instance.db_filename;
@@ -232,10 +239,11 @@ namespace Venom {
 
       int ret_value = 0;
 
-      
-      ret_value = setup_logging();
-      if (ret_value != 0)
-        return ret_value;
+      if (with_logging) {
+        ret_value = setup_logging();
+        if (ret_value != 0)
+          return ret_value;
+      }
 
       ret_value = setup_aliases();
       if (ret_value != 0)
