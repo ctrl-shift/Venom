@@ -124,6 +124,42 @@ namespace Venom {
       return messages;
     }
 
+    public string get_alias(Contact c) {
+
+      int param_position = select_alias_statement.bind_parameter_index ("$USER");
+      assert (param_position > 0);
+      string myId = Tools.bin_to_hexstring(session.get_address());
+      select_alias_statement.bind_text(param_position, myId);
+
+      param_position = select_alias_statement.bind_parameter_index ("$CONTACT");
+      assert (param_position > 0);
+      string cId = Tools.bin_to_hexstring(c.public_key);
+      select_alias_statement.bind_text(param_position, cId);
+
+      string alias = null;
+
+      while (select_alias_statement.step () == Sqlite.ROW) {
+        alias = select_message_statement.column_text(2);
+      }
+
+      select_alias_statement.reset();
+
+      return alias;
+    }
+
+    //will return code depending on operation and sucess
+    public int set_alias(Contact c, string newAlias) {
+      
+    }
+
+    private int update_alias(Contact c, string newAlias) {
+
+    }
+
+    private int create_alias(Contact c,string newAlias) {
+
+    }
+
     public int init_db() {
 
       // Open/Create a database:
@@ -241,6 +277,7 @@ namespace Venom {
         return -1;
       }
 
+      //Update statement to edit alias. Will execute on indexed data
       const string prepared_update_str = "UPDATE Aliases SET alias='$ALIAS' WHERE userHash = $USER AND contactHash = $CONTACT;";
       ec = db.prepare_v2 (prepared_update_str, prepared_update_str.length, out update_alias_statement);
       if (ec != Sqlite.OK) {
@@ -248,7 +285,7 @@ namespace Venom {
         return -1;
       }
 
-      //prepare select statement to get history. Will execute on indexed data
+      //prepare select statement to get aliases. Will execute on indexed data
       const string prepared_select_str = "SELECT alias FROM Aliases WHERE userHash = $USER AND contactHash = $CONTACT;";
       ec = db.prepare_v2 (prepared_select_str, prepared_select_str.length, out select_alias_statement);
       if (ec != Sqlite.OK) {
