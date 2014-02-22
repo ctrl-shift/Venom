@@ -149,15 +149,55 @@ namespace Venom {
 
     //will return code depending on operation and sucess
     public int set_alias(Contact c, string newAlias) {
-      
+      if (get_alias(c) != null) {
+        return update_alias(c, newAlias);
+      } else {
+        return create_alias(c, newAlias);
+      }
     }
 
     private int update_alias(Contact c, string newAlias) {
+      int param_position = update_alias_statement.bind_parameter_index ("$USER");
+      assert (param_position > 0);
+      string myId = Tools.bin_to_hexstring(session.get_address());
+      update_alias_statement.bind_text(param_position, myId);
 
+      param_position = update_alias_statement.bind_parameter_index ("$CONTACT");
+      assert (param_position > 0);
+      string cId = Tools.bin_to_hexstring(c.public_key);
+      update_alias_statement.bind_text(param_position, cId);
+
+      param_position = update_alias_statement.bind_parameter_index ("$ALIAS");
+      assert (param_position > 0);
+      update_alias_statement.bind_text(param_position, newAlias);
+
+      while (select_alias_statement.step () == Sqlite.ROW) {}
+
+      update_alias_statement.reset();
+
+      return 0;
     }
 
     private int create_alias(Contact c,string newAlias) {
+      int param_position = insert_alias_statement.bind_parameter_index ("$USER");
+      assert (param_position > 0);
+      string myId = Tools.bin_to_hexstring(session.get_address());
+      insert_alias_statement.bind_text(param_position, myId);
 
+      param_position = insert_alias_statement.bind_parameter_index ("$CONTACT");
+      assert (param_position > 0);
+      string cId = Tools.bin_to_hexstring(c.public_key);
+      insert_alias_statement.bind_text(param_position, cId);
+
+      param_position = insert_alias_statement.bind_parameter_index ("$ALIAS");
+      assert (param_position > 0);
+      insert_alias_statement.bind_text(param_position, newAlias);
+
+      while (select_alias_statement.step () == Sqlite.ROW) {}
+
+      insert_alias_statement.reset();
+
+      return 0;
     }
 
     public int init_db() {
