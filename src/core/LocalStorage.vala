@@ -171,7 +171,7 @@ namespace Venom {
       assert (param_position > 0);
       update_alias_statement.bind_text(param_position, newAlias);
 
-      while (select_alias_statement.step () == Sqlite.ROW) {}
+      while (update_alias_statement.step () == Sqlite.ROW) {}
 
       update_alias_statement.reset();
 
@@ -193,7 +193,7 @@ namespace Venom {
       assert (param_position > 0);
       insert_alias_statement.bind_text(param_position, newAlias);
 
-      while (select_alias_statement.step () == Sqlite.ROW) {}
+      while (insert_alias_statement.step () == Sqlite.ROW) {}
 
       insert_alias_statement.reset();
 
