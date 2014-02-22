@@ -75,7 +75,7 @@ namespace Venom {
       if(from == null) {
         return "me";
       } else {
-        return from.name;
+        return from.local_name;
       }
     }
     public virtual string get_message_plain() {
@@ -107,7 +107,7 @@ namespace Venom {
       return "*";
     }
     public override string get_message_plain() {
-      return "%s %s".printf(message_direction == MessageDirection.INCOMING ? from.name : "me", message);
+      return "%s %s".printf(message_direction == MessageDirection.INCOMING ? from.local_name : "me", message);
     }
   }
   public class GroupMessage : IMessage, GLib.Object {

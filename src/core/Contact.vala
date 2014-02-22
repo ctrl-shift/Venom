@@ -27,7 +27,15 @@ namespace Venom {
     public int friend_id         { get; set; }
     public string name           { get; set; default = ""; }
     // set a locally stored name/tag
-    //public string local_name     { get; set; default = ""; }
+    public string local_name     { 
+      get {
+        return this.name;
+      }
+      set {
+        GLib.return_if_fail(local_name != null && local_name.length > 0);
+        this.local_name = value;
+      }
+      default = this.name; }
     public string status_message { get; set; default = ""; }
     public DateTime last_seen    { get; set; default = null; }
     public int user_status       { get; set; default = (int)Tox.UserStatus.INVALID; }

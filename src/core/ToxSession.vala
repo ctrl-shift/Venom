@@ -45,6 +45,7 @@ namespace Venom {
   public class ToxSession : Object {
     private Tox.Tox handle;
     private IHistoryStorage local_storage;
+    private IAliasStorage alias_storage;
     private DhtServer[] dht_servers = {};
     private GLib.HashTable<int, Contact> _contacts = new GLib.HashTable<int, Contact>(null, null);
     private GLib.HashTable<int, GroupChat> _groups = new GLib.HashTable<int, GroupChat>(null, null);
@@ -89,9 +90,12 @@ namespace Venom {
       // create handle
       handle = new Tox.Tox( ipv6 ? 1 : 0);
 
+      //start alias storage
+      alias_storage = new SQLiteStorage();
+
       //start local storage
       if(VenomSettings.instance.enable_logging) {
-        local_storage = new SQLiteStorage();
+        local_storage = (alias_storage is SQLiteStorage)?alias_storage as SQLiteStorage:new SQLiteStorage();
         local_storage.connect_to(this);
       } else {
         local_storage = new DummyStorage();
@@ -166,6 +170,7 @@ namespace Venom {
         uint8[] friend_key = getclient_id(friend_id);
         Contact c = new Contact(friend_key, friend_id);
         c.name = getname(friend_id);
+        c.local_name = alias_storage.get_alias(c);
         c.status_message = get_statusmessage(friend_id);
         _contacts.set(friend_id, c);
       };
