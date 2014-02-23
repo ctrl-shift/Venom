@@ -114,7 +114,9 @@ namespace Venom {
 
       if(entry is Contact) {
         Contact contact = entry as Contact;
-        if(contact.name != null && contact.name != "") {
+        if(contact.local_name != null && contact.local_name != "") {
+          layout.set_text(contact.local_name, -1);
+        } else if(contact.name != null && contact.name != "") {
           layout.set_text(contact.name, -1);
         } else {
           layout.set_text(Tools.bin_to_hexstring(contact.public_key), -1);

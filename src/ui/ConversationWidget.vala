@@ -48,7 +48,9 @@ namespace Venom {
 
     public void update_contact() {
       // update contact name
-      if(contact.name == null || contact.name == "") {
+      if(contact.local_name != null || contact.local_name != "") {
+        label_contact_name.set_text(contact.local_name);
+      } else if(contact.name == null || contact.name == "") {
         label_contact_name.set_text(Tools.bin_to_hexstring(contact.public_key));
       } else {
         label_contact_name.set_text(contact.name);
