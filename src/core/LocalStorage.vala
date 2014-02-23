@@ -166,7 +166,7 @@ namespace Venom {
       string alias = null;
 
       while (select_alias_statement.step () == Sqlite.ROW) {
-        alias = select_message_statement.column_text(2);
+        alias = select_alias_statement.column_text(0);
       }
 
       select_alias_statement.reset();

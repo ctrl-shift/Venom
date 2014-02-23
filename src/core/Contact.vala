@@ -27,13 +27,15 @@ namespace Venom {
     public int friend_id         { get; set; }
     public string name           { get; set; default = ""; }
     // set a locally stored name/tag
+    private string _local_name;
     public string local_name     { 
       get {
-        return this.name;
+        return _local_name;
       }
       set {
-        GLib.return_if_fail(local_name != null && local_name.length > 0);
-        this.local_name = value;
+        if (value != null && value.length > 0) {
+          _local_name = value;
+        }
       }
       default = this.name; }
     public string status_message { get; set; default = ""; }
