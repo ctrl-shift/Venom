@@ -92,6 +92,7 @@ namespace Venom {
 
       //start alias storage
       alias_storage = new SQLiteStorage();
+      alias_storage.set_session(this);
 
       //start local storage
       if(VenomSettings.instance.enable_logging) {
@@ -103,6 +104,7 @@ namespace Venom {
 
       init_dht_servers();
       init_callbacks();
+
     }
 
     // destructor
@@ -470,6 +472,7 @@ namespace Venom {
     // get personal id
     public uint8[] get_address() {
       uint8[] buf = new uint8[Tox.FRIEND_ADDRESS_SIZE];
+      stdout.printf("getting address");
       lock(handle) {
         handle.get_address(buf);
       }

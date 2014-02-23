@@ -30,6 +30,7 @@ namespace Venom {
   public interface IAliasStorage : GLib.Object {
     public abstract string get_alias(Contact c);
     public abstract int set_alias(Contact c, string newAlias);
+    public abstract void set_session(ToxSession session);
   }
 
   public class DummyStorage : IHistoryStorage, GLib.Object {
@@ -57,6 +58,10 @@ namespace Venom {
 
     public SQLiteStorage() {
       init_db(false);
+    }
+
+    public void set_session(ToxSession session) {
+      this.session = session;
     }
 
     public void connect_to(ToxSession session) {

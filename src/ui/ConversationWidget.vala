@@ -27,6 +27,9 @@ namespace Venom {
     private Gtk.Label label_contact_statusmessage;
     private Gtk.Image image_contact_image;
 
+    private Gtk.Button button_arrow;
+    private Gtk.Menu menu_arrow;
+
     private Gtk.TextTag empty_message_tag;
 
     private IConversationView conversation_view;
@@ -48,7 +51,7 @@ namespace Venom {
 
     public void update_contact() {
       // update contact name
-      if(contact.local_name != null || contact.local_name != "") {
+      if(contact.local_name != null && contact.local_name != "") {
         label_contact_name.set_text(contact.local_name);
       } else if(contact.name == null || contact.name == "") {
         label_contact_name.set_text(Tools.bin_to_hexstring(contact.public_key));
@@ -80,6 +83,22 @@ namespace Venom {
       Gtk.Image image_call = builder.get_object("image_call") as Gtk.Image;
       Gtk.Image image_call_video = builder.get_object("image_call_video") as Gtk.Image;
       Gtk.Image image_send_file = builder.get_object("image_send_file") as Gtk.Image;
+
+      
+      button_arrow = builder.get_object("button_arrow") as Gtk.Button;
+      menu_arrow = builder.get_object("menu_arrow") as Gtk.Menu;
+      Gtk.ImageMenuItem menuitem_rename = builder.get_object("menuitem_rename") as Gtk.ImageMenuItem;
+
+      button_arrow.clicked.connect( () => {
+          menu_arrow.popup(null,
+            null,
+            user_button_menu_position_function,
+            0,
+            0);
+      });
+
+      menuitem_rename.activate.connect( rename_friend );
+      
 
       //TODO
       //Gtk.Button button_call = builder.get_object("button_call") as Gtk.Button;
@@ -242,6 +261,18 @@ namespace Venom {
       FileTransfer ft = new FileTransfer(contact, FileTransferDirection.OUTGOING, file_size, file.get_basename(), file.get_path() );
       new_outgoing_file(ft);
       add_filetransfer(ft);
+    }
+
+    private void rename_friend() {
+
+    }
+
+    private void user_button_menu_position_function(Gtk.Menu menu, out int x, out int y, out bool push_in) {
+      button_arrow.get_event_window().get_origin(out x, out y);
+      Gtk.Allocation allocation;
+      button_arrow.get_allocation(out allocation);
+      y += allocation.height;
+      push_in = true;
     }
   }
 }
